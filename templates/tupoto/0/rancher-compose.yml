@@ -1,0 +1,115 @@
+---
+.catalog:
+  name: tupo.to
+  version: v1.0.0
+  description: |
+    tupo.to - acortador de URL's
+  questions:
+    - variable: HTTP_PORT
+      label: Port of HTTP
+      type: int
+      required: true
+      default: 80
+    - variable: HTTPS_PORT
+      label: Port of HTTPS
+      type: int
+      required: true
+      default: 443
+    - variable: HAPROXY_HOST_LABEL
+      label: Host label for haproxy (optional)
+      type: string
+      required: false
+    - variable: SHORTENER_HOST_LABEL
+      label: Host label for shortener server (optional)
+      type: string
+      required: false
+    - variable: REDIS_HOST_LABEL
+      label: Host label for redis server (optional)
+      type: string
+      required: false
+    - variable: SHORTENER_IMAGE
+      label: Docker image for shortener server
+      type: string
+      required: true
+      default: lgatica/tupoto:latest
+    - variable: REDIS_IMAGE
+      label: Docker image for redis server
+      type: string
+      required: true
+      default: redis:alpine
+    - variable: SENTRY_TOKEN
+      label: Sentry DSN for shortener server (optional)
+      type: string
+      required: false
+    - variable: VOLUME_NAME
+      label: Redis volume name (optional)
+      type: string
+      required: false
+    - variable: SSL_CERT
+      label: SSL certificate
+      description: Select SSL certificate.
+      type: certificate
+      required: true
+    - variable: LETSENCRYPT_SERVICE
+      label: Letsencrypt Service
+      description: Select letsencrypt service
+      type: service
+      required: true
+      default: letsencrypt/letsencrypt
+    - variable: HOSTNAME
+      label: Hostname for shortener server
+      type: string
+      required: true
+
+version: '2'
+services:
+  haproxy:
+    scale: 1
+    start_on_create: true
+    retain_ip: true
+    lb_config:
+      certs: []
+      config: |-
+        frontend http-frontend
+           bind *:${HTTP_PORT}
+           mode http
+           redirect scheme https code 301 if !{ ssl_fc }
+      default_cert: '${SSL_CERT}'
+      port_rules:
+        - hostname: ${HOSTNAME}
+          priority: 1
+          protocol: http
+          service: shortener
+          source_port: ${HTTP_PORT}
+          target_port: 3000
+        - hostname: ${HOSTNAME}
+          priority: 2
+          protocol: https
+          service: shortener
+          source_port: ${HTTPS_PORT}
+          target_port: 3000
+        - hostname: ${HOSTNAME}
+          path: /.well-known/acme-challenge
+          priority: 3
+          protocol: http
+          service: ${LETSENCRYPT_SERVICE}
+          source_port: 80
+          target_port: 80
+    health_check:
+      healthy_threshold: 2
+      response_timeout: 2000
+      port: 42
+      unhealthy_threshold: 3
+      initializing_timeout: 60000
+      interval: 2000
+      reinitializing_timeout: 60000
+
+  shortener:
+    scale: 1
+    start_on_create: true
+    retain_ip: true
+
+  redis:
+    scale: 1
+    start_on_create: true
+    retain_ip: true

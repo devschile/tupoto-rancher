@@ -1,0 +1,10 @@
+---
+name: tupo.to
+description: |
+  tupo.to - acortador de URL's
+version: v1.0.0
+category: Shortener
+maintainer: Leonardo Gatica <lgatica@protonmail.com>
+projectURL: https://github.com/lgaticaq/tupoto-rancher
+labels:
+  io.rancher.orchestration.supported: 'cattle,swarm'
